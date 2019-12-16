@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+		
+<mapper namespace="PurchaseMapper">
+
+ 	<resultMap id="purchaseSelectMap" type="purchase">
+ 	<result property="receiverName" 		column="receiver_name" jdbcType="VARCHAR"/>
+ 	<result property="receiverPhone"		column="receiver_phone" jdbcType="VARCHAR"/>
+ 	<result property="dlvyDate" 			column="dlvy_date" 		jdbcType="DATE"/>
+ 	<result property="orderDate"			column="order_data" 	jdbcType="DATE"/>
+	<result property="tranNo" 				column="tran_no"		jdbcType="INTEGER"/>
+	<result property="purchaseProd.prodNo" 	column="prod_no" 		jdbcType="INTEGER"/>
+	<result property="purchaseProd.prodName" column="prod_name" 	jdbcType="VARCHAR"/>
+	<result property="buyer.userId" 		column="buyer_id" 		jdbcType="VARCHAR"/>
+	<result property="paymentOption" 		column="payment_option"	jdbcType="CHAR"/>
+	<result property="addr" 				column="DEMAILADDR" 	jdbcType="VARCHAR"/>
+	<result property="tranCode" 			column="tran_status_code" jdbcType="CHAR"/>
+	<result property="dlvyRequest" 			column="dlvy_request"	jdbcType="VARCHAR"/>
+	</resultMap>
+	
+	
+	<!-- SQL : PurchasetotalRow -->
+	<select id="getPurchaseTotalRow" parameterType="String" resultType="int">
+		SELECT count(*)
+		FROM transaction
+		WHERE buyer_id = #{buyerId}
+	</select>
+	
+	
+	<!-- SQL : Get -->
+	<select id="getPurchase" parameterType="int" resultMap="purchaseSelectMap">
+		SELECT
+		tran_no, payment_option, receiver_name, receiver_phone, DEMAILADDR,  dlvy_request, dlvy_date, order_data
+		FROM transaction
+		WHERE tran_no = #{tranNo}
+	</select>
+	
+	<!-- SQL : Add -->
+	<insert id="addPurchase" parameterType="purchase">
+		INSERT
+		INTO transaction (tran_no, prod_no, buyer_id, receiver_name, receiver_phone, payment_option,
+		        		DEMAILADDR, dlvy_request, dlvy_date, order_data, tran_status_code)
+		VALUES (	seq_transaction_tran_no.NEXTVAL,
+					 #{purchaseProd.prodNo:INTEGER},
+					 #{buyer.userId:VARCHAR},
+					 #{receiverName:VARCHAR},
+					 #{receiverPhone:VARCHAR},
+					 #{paymentOption:CHAR}, 
+					 #{addr:VARCHAR},
+					 #{dlvyRequest:VARCHAR},
+					 #{dlvyDate:DATE},
+					 SYSDATE ,
+					 #{tranCode:CHAR} ) 
+	</insert>
+	
+	 <!-- SQL : UPDATE -->
+	<update id="updatePurchase" parameterType="purchase">
+		UPDATE transaction
+		<set>
+			payment_option = #{paymentOption:CHAR},
+			receiver_name  = #{receiverName:VARCHAR},
+			receiver_phone = #{receiverPhone:VARCHAR},
+			DEMAILADDR	   = #{addr:VARCHAR},
+			dlvy_request   = #{dlvyRequest:VARCHAR},
+			dlvy_date      = #{dlvyDate:DATE}
+		</set>
+		WHERE tran_no = #{tranNo}
+	</update>
+	
+	
+	 <!-- SQL : UPDATE TranCode -->
+	<update id="updateTranCode" parameterType="purchase">
+		UPDATE transaction
+		<set>
+			tran_status_code = #{tranCode}+1
+		</set>
+		WHERE tran_no = #{tranNo}
+	</update>
+	
+	<!-- SQL : getSaleList -->
+	<select id="getSaleList" parameterType="search" resultMap="purchaseSelectMap">
+		SELECT * 
+		FROM ( SELECT ROWNUM AS row_seq, inner_table.*
+				FROM ( SELECT p.prod_no, p.prod_name, t.tran_no, t.receiver_name, t.dlvy_request, t.buyer_id, t.dlvy_date, t.tran_status_code
+						FROM transaction t, product p 
+						WHERE p.prod_no = t.prod_no
+						AND t.tran_status_code IS NOT NULL
+						ORDER BY t.tran_no )inner_table
+			   WHERE ROWNUM <![CDATA[<=]]> #{currentPage}*#{pageSize} )
+	   WHERE row_seq BETWEEN  (#{currentPage} -1)* #{pageSize} +1
+	   AND	 #{currentPage}* #{pageSize}
+	</select>
+	
+	<!-- SQL : getSaleTotalRow -->
+	<select id="getSaleTotalRow" resultType="int">
+	 SELECT count(*) 
+	 FROM transaction
+	</select>
+	
+	
+	<!-- SQL : getPurchaseList -->
+	<select id="getPurchaseList" parameterType="map" resultMap="purchaseSelectMap">
+	 SELECT *
+	 FROM(  SELECT  ROWNUM AS row_seq , inner_table.*
+	 		FROM ( SELECT 
+	    		   t.buyer_id, t.tran_no, p.prod_no, p.prod_name ,t.receiver_name, t.receiver_phone, t.dlvy_request, t.tran_status_code
+				   FROM transaction t, product p
+				   WHERE t.prod_no = p.prod_no
+				   AND t.buyer_id =  #{buyerId}
+		           ORDER BY t.tran_no ) inner_table 
+		     WHERE ROWNUM  <![CDATA[<=]]> #{search.currentPage}*#{search.pageSize} )
+	 WHERE row_seq BETWEEN (#{search.currentPage} -1)* #{search.pageSize} +1
+	 AND  #{search.currentPage}* #{search.pageSize}
+	</select>
+	
+	
+
+
+
+</mapper>
